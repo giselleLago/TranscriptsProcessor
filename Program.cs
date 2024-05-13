@@ -4,8 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Reflection.PortableExecutable;
 using TranscriptsProcessor.Services;
+using TranscriptsProcessor.TranscriptionService;
 
 namespace TranscriptsProcessor
 {
@@ -45,10 +45,13 @@ namespace TranscriptsProcessor
                 try
                 {
                     var services = host.Services.CreateScope().ServiceProvider;
-                    // var service = services.GetRequiredService<Service>();
                     var logger = serviceProvider.GetService<ILogger<Program>>();
-                    var service = new Service(logger);
-                    service.Run(pathArg.Value);
+                    var transcriptService = serviceProvider.GetService<ITranscriptiService>();
+                    var sender = serviceProvider.GetService<ISender>();
+                    var fileManager = serviceProvider.GetService<IFileManager>();
+
+                    var scheduler = new Scheduler(logger, fileManager, sender);
+                    scheduler.Start(pathArg.Value);
                 }
                 catch (Exception ex)
                 {
@@ -56,39 +59,17 @@ namespace TranscriptsProcessor
                 }
             });
 
-            
-
-            //using ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
-            //{
-            //    builder
-            //        .AddFilter("Microsoft", LogLevel.Warning)  // Set log levels
-            //        .AddFilter("System", LogLevel.Warning)
-            //        .AddFilter("MyConsoleApp.Program", LogLevel.Debug);
-            //       // .AddConsole(); // Add console logger
-            //});
-
-            //ILogger logger = loggerFactory.CreateLogger<Program>();
-            //logger.LogInformation("This is an information message");
-            //logger.LogWarning("This is a warning message");
-
-            // ILogger loggerService = LoggerFactory.CreateLogger<Service>();
-
-
-
-            //var logger = serviceProvider.GetService<ILogger<Program>>();
-            //var service = new Service(logger);
-            //service.Run("");
-
             return app.Execute(args);
-
-            //var scheduler = new Scheduler(logger);
-            //scheduler.Start();
         }
 
         private static void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<Service>();
+            services.AddSingleton<Processor>();
             services.AddSingleton<Scheduler>();
+            services.AddSingleton<IFileValidator, FileValidator>();
+            services.AddSingleton<ISender, Sender>();
+            services.AddSingleton<IFileManager, FileManager>();
+            services.AddSingleton<ITranscriptiService, TranscriptService>();
         }
     }
 }
